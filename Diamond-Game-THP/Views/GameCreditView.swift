@@ -7,16 +7,17 @@
 
 import UIKit
 
+/// A view where you can set the title and amount label to show game credit information.
 class GameCreditView: UIView {
     
     // MARK: UI Components
     
-    /// The title label (e.g., "CREDITS").
+    /// The title label (ex: "CREDITS").
     private var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textColor = UIColor.systemYellow
-        label.font = UIFont.boldSystemFont(ofSize: 48)
+        label.font = UIFont.boldSystemFont(ofSize: 28)
         label.layer.shadowColor = UIColor.black.cgColor
         label.layer.shadowOpacity = 0.7
         label.layer.shadowOffset = CGSize(width: 2, height: 2)
@@ -25,7 +26,7 @@ class GameCreditView: UIView {
         return label
     }()
     
-    /// The amount label (e.g., "$100").
+    /// The amount label (ex: "$100").
     private var amountLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -59,7 +60,6 @@ class GameCreditView: UIView {
         let stackView = UIStackView(arrangedSubviews: [titleLabel, amountLabel])
         stackView.axis = .vertical
         stackView.alignment = .center
-        stackView.spacing = -8
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
         addSubview(stackView)

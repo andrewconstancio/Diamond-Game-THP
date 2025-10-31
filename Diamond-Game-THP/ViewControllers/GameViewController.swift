@@ -7,30 +7,27 @@
 
 import UIKit
 
-class GameViewController: UIViewController {
+/// A view controller that represents the main controls for the slot machine game.
+class GameViewController: UIViewController, UIAdaptivePresentationControllerDelegate {
     
-    // MARK: Variables
+    // MARK: Properties
     
-    /// The slot images used in the picker view to represent a slot machine.
-    private let images = [
-        UIImage(named: "slot-bell"),
-        UIImage(named: "slot-cherries"),
-        UIImage(named: "slot-diamond"),
-        UIImage(named: "slot-lemon"),
-        UIImage(named: "slot-seven"),
-        UIImage(named: "slot-star")
-    ]
+    /// The main slot game engine for this app.
+    private var gameEngine = GameEngine()
+    
+    /// The slot symbol images in a array of `UIImages`.
+    private var slotSymbolImages = Symbol.allCases.compactMap { UIImage(named: $0.image) }
 
     // MARK: UI Components
     
-    /// A UIView the shows the title title for bet and total amount for the bet.
-    private var betAmountView = GameCreditView()
+    /// A UIView the shows the title for bet and total amount for the bet.
+    private lazy var betAmountView = ChangeBetView()
     
-    /// A UIView the shows the title title for win amount and win total.
-    private var winAmountView = GameCreditView()
+    /// A UIView the shows the title for win amount and win total.
+    private lazy var winAmountView = makeCreditView(title: "Win", amount: "\(gameEngine.slotMachine.winTotal)")
     
-    /// A UIView the shows the title title for credit amount and credit total.
-    private var creditAmountView = GameCreditView()
+    /// A UIView the shows the title  for credit amount and credit total.
+    private lazy var creditAmountView = makeCreditView(title: "Credit", amount: "\(gameEngine.slotMachine.creditTotal)")
 
     /// The background image that appears behind the slot reels.
     private var backgroundImage: UIImageView = {
@@ -53,8 +50,21 @@ class GameViewController: UIViewController {
     private var slotReelPickerView: UIPickerView = {
         let picker = UIPickerView()
         picker.translatesAutoresizingMaskIntoConstraints = false
+        picker.isUserInteractionEnabled = false
         return picker
     }()
+    
+    /// Makes a information credit view for the game.
+    /// - Parameters:
+    ///   - title: The title of the information.
+    ///   - amount: The amount for the information
+    /// - Returns: `GameCreditView` with the information added.
+    private func makeCreditView(title: String, amount: String) -> GameCreditView {
+       let view = GameCreditView()
+       view.setCreditLabelText(title)
+       view.setCreditAmountLabelText(amount)
+       return view
+   }
 
     // MARK: Lifecycle
 
@@ -62,23 +72,38 @@ class GameViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupButtonActions()
-        
-        slotReelPickerView.delegate = self
-        slotReelPickerView.dataSource = self
-        
-        betAmountView.setCreditLabelText("Bet")
-        betAmountView.setCreditAmountLabelText("100")
-        
-        winAmountView.setCreditLabelText("Win")
-        winAmountView.setCreditAmountLabelText("0")
-        
-        creditAmountView.setCreditLabelText("Credit")
-        creditAmountView.setCreditAmountLabelText("500")
+        setupDelegates()
+    }
+    
+    /// Present the `AddGameCreditViewController`.
+    func showAddCreditsVC() {
+        let gameCreditVC = AddGameCreditViewController()
+        gameCreditVC.delegate = self
+        gameCreditVC.isModalInPresentation = true
+        present(gameCreditVC, animated: true, completion: nil)
+    }
+    
+    /// Present the `PopUpViewController`.
+    func showPopUpVC(symbol: Symbol) {
+        let popUpVC = WinnerPopUpViewController(symbol: symbol)
+        present(popUpVC, animated: true, completion: nil)
+    }
+    
+    func showMessagePopUpVC(title: String) {
+        let popUpVC = MessagePopUpViewController(title: title)
+        present(popUpVC, animated: true, completion: nil)
     }
 
     // MARK: Setup
+    
+    /// Assigned the delegates for this view controller.
+    func setupDelegates() {
+        slotReelPickerView.delegate = self
+        slotReelPickerView.dataSource = self
+        betAmountView.delegate = self
+    }
 
-    /// Congfigures the button actions for the UI components.
+    /// Configures the button actions for the UI components.
     func setupButtonActions() {
         playGameButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
     }
@@ -88,35 +113,10 @@ class GameViewController: UIViewController {
 
         // Add and configure the background image to fill the screen.
         view.insertSubview(backgroundImage, at: 0)
-
-        NSLayoutConstraint.activate([
-             backgroundImage.topAnchor.constraint(equalTo: view.topAnchor),
-             backgroundImage.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-             backgroundImage.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-             backgroundImage.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-
-        // Play game button.
         view.addSubview(playGameButton)
-
-        NSLayoutConstraint.activate([
-            playGameButton.centerXAnchor.constraint(equalTo: backgroundImage.centerXAnchor),
-            playGameButton.bottomAnchor.constraint(equalTo: backgroundImage.bottomAnchor, constant: -35),
-            playGameButton.widthAnchor.constraint(equalToConstant: 200),
-            playGameButton.heightAnchor.constraint(equalToConstant: 65)
-        ])
-        
-        // Add and configure the reel picker view to stretch across the background.
         view.addSubview(slotReelPickerView)
         
-        NSLayoutConstraint.activate([
-            slotReelPickerView.leadingAnchor.constraint(equalTo: backgroundImage.leadingAnchor, constant: 40),
-            slotReelPickerView.topAnchor.constraint(equalTo: backgroundImage.topAnchor),
-            slotReelPickerView.bottomAnchor.constraint(equalTo: playGameButton.topAnchor),
-            slotReelPickerView.trailingAnchor.constraint(equalTo: backgroundImage.trailingAnchor, constant: -40)
-        ])
-        
-        // Add and configure a stack view the holds the bet, win and credit amount.
+        // Add a stack view the holds the bet, win and credit amount.
         let stackView = UIStackView(arrangedSubviews: [betAmountView, winAmountView, creditAmountView])
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .horizontal
@@ -125,10 +125,26 @@ class GameViewController: UIViewController {
         view.addSubview(stackView)
         
         NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: backgroundImage.leadingAnchor, constant: 80),
+            // Background image.
+            backgroundImage.topAnchor.constraint(equalTo: view.topAnchor),
+            backgroundImage.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backgroundImage.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backgroundImage.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            playGameButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            playGameButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            playGameButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.20),
+            playGameButton.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.09),
+            
+            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 80),
+            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -80),
             stackView.bottomAnchor.constraint(equalTo: playGameButton.topAnchor, constant: -12),
-            stackView.trailingAnchor.constraint(equalTo: backgroundImage.trailingAnchor, constant: -80),
-            stackView.heightAnchor.constraint(equalToConstant: 100)
+            stackView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.125),
+            
+            slotReelPickerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            slotReelPickerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+            slotReelPickerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            slotReelPickerView.bottomAnchor.constraint(equalTo: stackView.topAnchor, constant: -12)
         ])
     }
 
@@ -136,26 +152,65 @@ class GameViewController: UIViewController {
 
     /// Starts a new slot game whenever the play button is tapped.
     @objc func startGame() {
-        backgroundImage.isUserInteractionEnabled = false
-        animateSlotsRolling()
+        guard gameEngine.startGame() else {
+            handleGameStartFailure()
+            return
+        }
+        
+        playGameButton.isEnabled = false
+        performSlotSpins()
     }
     
-    /// Animating spinning the slot reels.
-    func animateSlotsRolling() {
+    /// Handles if the user can not start a game.
+    func handleGameStartFailure() {
+        if gameEngine.slotMachine.creditTotal == 0 {
+            showAddCreditsVC()
+        } else {
+            showMessagePopUpVC(title: "Not enough credits!")
+        }
+    }
+    
+    /// Start performing the animation for slot spinning and updating the UI.
+    func performSlotSpins() {
+        gameEngine.playSound(sound: "spin")
+        let (results, wonRound) = gameEngine.performSpin()
         var delay: TimeInterval = 0
-        let repetitions = 6
         
         for index in 0..<slotReelPickerView.numberOfComponents {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: {
-                let totalRows = repetitions * self.images.count
-                let randomRow = Int.random(in: self.images.count..<totalRows)
-                self.slotReelPickerView.selectRow(randomRow, inComponent: index, animated: true)
-            })
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {  [weak self] in
+                if let row = Symbol.allCases.firstIndex(of: results[index]) {
+                    self?.slotReelPickerView.selectRow(row, inComponent: index, animated: true)
+                }
+            }
             
             delay += 0.3
         }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            if wonRound {
+                if let winnerSymbol = results.first {
+                    self?.showPopUpVC(symbol: winnerSymbol)
+                    self?.gameEngine.playSound(sound: "win")
+                }
+            }
+            self?.updateCreditsUI()
+            self?.playGameButton.isEnabled = true
+            
+            if self?.gameEngine.slotMachine.creditTotal == 0 {
+                self?.showAddCreditsVC()
+            }
+        }
+    }
+    
+    /// Update the win and credit totals UI.
+    func updateCreditsUI() {
+        let slotMachine = gameEngine.slotMachine
+        winAmountView.setCreditAmountLabelText("\(slotMachine.winTotal)")
+        creditAmountView.setCreditAmountLabelText("\(slotMachine.creditTotal)")
     }
 }
+
+// MARK: Delegates
 
 extension GameViewController: UIPickerViewDelegate, UIPickerViewDataSource {
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
@@ -163,7 +218,7 @@ extension GameViewController: UIPickerViewDelegate, UIPickerViewDataSource {
     }
     
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        return images.count * 10
+        return slotSymbolImages.count * 10
     }
     
     func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
@@ -171,12 +226,24 @@ extension GameViewController: UIPickerViewDelegate, UIPickerViewDataSource {
             $0.backgroundColor = .clear
         }
         
-        let index = row % images.count
-        return UIImageView(image: images[index])
+        let index = row % slotSymbolImages.count
+        return UIImageView(image: slotSymbolImages[index])
     }
     
     func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
-        guard let height = images[component]?.size.height else { return 100 }
-        return height + 1
+        return slotSymbolImages[component].size.height + 1
+    }
+}
+
+extension GameViewController: AddGameCreditViewControllerDelegate {
+    func didUpdateCreditAmount(amount: Int) {
+        gameEngine.addCredits(amount: amount)
+        creditAmountView.setCreditAmountLabelText("\(gameEngine.slotMachine.creditTotal)")
+    }
+}
+
+extension GameViewController: ChangeBetViewDelegate {
+    func updateBetAmount(amount: Int) {
+        gameEngine.setBetAmount(amount: amount)
     }
 }

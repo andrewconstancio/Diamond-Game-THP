@@ -20,7 +20,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene
         window?.makeKeyAndVisible()
-        window?.rootViewController = GameViewController()
+        window?.rootViewController = UINavigationController(rootViewController: GameViewController())
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
