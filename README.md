@@ -20,3 +20,11 @@
 - Open with xCode.
 - Choose an iPad as the target device. 
 - Run app.
+
+### Screenshots
+<img width="400" height="300" alt="Simulator Screenshot - iPad Air 11-inch (M3) - 2025-10-31 at 09 30 53" src="https://github.com/user-attachments/assets/b47569f9-e44f-43eb-9870-c37f5f185ab0" />
+<img width="400" height="300" alt="Simulator Screenshot - iPad Air 11-inch (M3) - 2025-10-31 at 09 33 16" src="https://github.com/user-attachments/assets/270e23c3-feb5-4dde-b7f5-48af7bd0db0c" />
+<img width="400" height="300" alt="Simulator Screenshot - iPad Air 11-inch (M3) - 2025-10-31 at 09 31 35" src="https://github.com/user-attachments/assets/11721217-3dc8-4f54-8102-7fd83bef79b5" />
+<img width="400" height="300" alt="Simulator Screenshot - iPad Air 11-inch (M3) - 2025-10-31 at 09 28 37" src="https://github.com/user-attachments/assets/c07df208-f490-490d-98e4-a0a0a94c7fde" />
+
+
